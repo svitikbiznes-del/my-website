@@ -18,8 +18,8 @@ from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "anoncheat.db"
-HOST = "127.0.0.1"
-PORT = 5000
+HOST = "0.0.0.0"
+PORT = int(os.environ.get("PORT", 5000))
 SESSION_COOKIE = "anoncheat_session"
 SESSION_TTL = 60 * 60 * 24 * 7
 ADMIN_LOGIN = os.environ.get("ANONCHEAT_ADMIN_LOGIN", "admim")
