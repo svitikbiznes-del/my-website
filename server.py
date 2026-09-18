@@ -16,6 +16,8 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
+import urllib.parse
+import urllib.request
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,6 +28,35 @@ SESSION_COOKIE = "anoncheat_session"
 SESSION_TTL = 60 * 60 * 24 * 7
 ADMIN_LOGIN = os.environ.get("ANONCHEAT_ADMIN_LOGIN", "admim")
 ADMIN_PASSWORD = os.environ.get("ANONCHEAT_ADMIN_PASSWORD", "svitik1337133713371337")
+
+# Cloudflare Turnstile Configuration
+CF_SITEKEY = os.environ.get("CLOUDFLARE_TURNSTILE_SITEKEY", "0x4AAAAAAE8MkSgt7rOe4ggO")
+CF_SECRET_KEY = os.environ.get("CLOUDFLARE_TURNSTILE_SECRET_KEY", "0x4AAAAAAE8Mkb1y0d0GJKuojjYpwdCKBnA")
+
+
+def verify_turnstile(token, remote_ip=None):
+    if not CF_SECRET_KEY:
+        return True
+    clean_token = str(token or "").strip()
+    if not clean_token:
+        return False
+    try:
+        data = urllib.parse.urlencode({
+            "secret": CF_SECRET_KEY,
+            "response": clean_token,
+            "remoteip": remote_ip or "",
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            res = json.loads(resp.read().decode("utf-8"))
+            return bool(res.get("success"))
+    except Exception:
+        traceback.print_exc()
+        return False
 
 
 def now_iso():
@@ -433,6 +464,10 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send_json({"ok": True, "message": "Тема успешно удалена."})
 
     def register(self, body):
+        turnstile_token = str(body.get("turnstile_token") or body.get("cf-turnstile-response") or "").strip()
+        if not verify_turnstile(turnstile_token, self.client_address[0]):
+            self.send_error_json("Пожалуйста, подтвердите капчу Cloudflare.")
+            return
         username = str(body.get("username", "")).strip()
         email = str(body.get("email", "")).strip().lower()
         password = str(body.get("password", ""))
@@ -465,6 +500,10 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send_json({"ok": True, "user": public_user(row)}, HTTPStatus.CREATED, self.set_session_cookie(create_session(user_id)))
 
     def login(self, body):
+        turnstile_token = str(body.get("turnstile_token") or body.get("cf-turnstile-response") or "").strip()
+        if not verify_turnstile(turnstile_token, self.client_address[0]):
+            self.send_error_json("Пожалуйста, подтвердите капчу Cloudflare.")
+            return
         identity = str(body.get("identity", "")).strip()
         password = str(body.get("password", ""))
         with get_db() as db:

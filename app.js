@@ -475,6 +475,9 @@ function switchAuthTab(tab) {
   $('#login-form').classList.toggle('is-hidden', tab !== 'login');
   $('#register-form').classList.toggle('is-hidden', tab !== 'register');
   $('#auth-title').innerHTML = tab === 'login' ? 'Вход на форум<span class="brand-accent">.</span>' : 'Регистрация на форуме<span class="brand-accent">.</span>';
+  if (window.turnstile && typeof window.turnstile.reset === 'function') {
+    try { window.turnstile.reset(); } catch {}
+  }
 }
 
 function openPricingModal() {
@@ -488,15 +491,17 @@ function closePricingModal() {
 function renderDashboard(user) {
   const subscription = formatSubscription(user);
   $('#dashboard-admin-panel')?.classList.toggle('is-hidden', user.role !== 'admin');
-  $('#profile-avatar').innerHTML = `<img src="${user.avatarUrl || DEFAULT_AVATAR_URL}" alt="Avatar" />`;
+  $('#profile-avatar').textContent = (user.username || 'U').slice(0, 2).toUpperCase();
   $('#profile-name').textContent = user.username;
   $('#profile-email').textContent = user.email;
-  $('#profile-id').textContent = `#${String(user.id).slice(0, 8).toUpperCase()}`;
-  $('#profile-role').textContent = user.role === 'admin' ? 'ADMIN' : 'MEMBER';
-  $('#profile-role-detail').textContent = user.role === 'admin' ? 'Administrator' : 'Member';
+  $('#profile-id').textContent = user.id;
   $('#profile-created').textContent = formatDate(user.createdAt);
-  $('#profile-hwid').textContent = 'null';
-  $('#subscription-state').innerHTML = `<i></i> ${subscription.active ? 'active' : 'inactive'}`;
+  $('#profile-role').textContent = user.role.toUpperCase();
+  $('#profile-role-detail').textContent = user.role === 'admin' ? 'Администратор' : 'Участник';
+  $('#profile-hwid').textContent = user.hwid || 'Не привязан';
+
+  $('#subscription-state').innerHTML = subscription.active ? '<i></i> active' : '<i></i> inactive';
+  $('#subscription-state').className = `subscription-state ${subscription.active ? 'active' : ''}`;
   $('#subscription-title').textContent = subscription.active ? `${subscription.days} дней доступа` : 'Доступ не активирован';
   $('#subscription-copy').textContent = subscription.active ? 'Твоя подписка активна. Статус синхронизирован с сервером.' : 'Обратись к администратору, чтобы активировать доступ к приватному пулу.';
   $('#subscription-date').textContent = subscription.date;
@@ -574,17 +579,27 @@ function goToAccount() {
 async function handleLogin(event) {
   event.preventDefault();
   setMessage('login-message', '');
+  const form = $('#login-form');
+  const turnstileToken = form.querySelector('[name="cf-turnstile-response"]')?.value || '';
+
+  if (!turnstileToken) {
+    setMessage('login-message', 'Пожалуйста, подтвердите капчу Cloudflare перед входом.');
+    return;
+  }
+
   try {
     const data = await api('/api/login', {
       method: 'POST',
       body: JSON.stringify({
         identity: $('#login-identity').value.trim(),
-        password: $('#login-password').value
+        password: $('#login-password').value,
+        turnstile_token: turnstileToken
       })
     });
     currentUser = data.user;
     closeAuth();
-    $('#login-form').reset();
+    form.reset();
+    if (window.turnstile) try { window.turnstile.reset(); } catch {}
     showToast(`С возвращением, ${currentUser.username}`);
     updateAccountButton();
     await loadForumStats();
@@ -597,15 +612,18 @@ async function handleLogin(event) {
     }
   } catch (error) {
     setMessage('login-message', error.message);
+    if (window.turnstile) try { window.turnstile.reset(); } catch {}
   }
 }
 
 async function handleRegister(event) {
   event.preventDefault();
   setMessage('register-message', '');
+  const form = $('#register-form');
   const username = ($('#register-username').value || '').trim();
   const email = ($('#register-email').value || '').trim();
   const password = $('#register-password').value || '';
+  const turnstileToken = form.querySelector('[name="cf-turnstile-response"]')?.value || '';
 
   if (!/^[a-zA-Z0-9]{3,16}$/.test(username)) {
     setMessage('register-message', 'Никнейм должен содержать от 3 до 16 символов (только английские буквы и цифры).');
@@ -620,14 +638,20 @@ async function handleRegister(event) {
     return;
   }
 
+  if (!turnstileToken) {
+    setMessage('register-message', 'Пожалуйста, подтвердите капчу Cloudflare перед регистрацией.');
+    return;
+  }
+
   try {
     const data = await api('/api/register', {
       method: 'POST',
-      body: JSON.stringify({ username, email, password })
+      body: JSON.stringify({ username, email, password, turnstile_token: turnstileToken })
     });
     currentUser = data.user;
     closeAuth();
-    $('#register-form').reset();
+    form.reset();
+    if (window.turnstile) try { window.turnstile.reset(); } catch {}
     showToast(`Аккаунт ${currentUser.username} успешно создан!`);
     updateAccountButton();
     await loadForumStats();
@@ -635,6 +659,7 @@ async function handleRegister(event) {
     renderDashboard(currentUser);
   } catch (error) {
     setMessage('register-message', error.message);
+    if (window.turnstile) try { window.turnstile.reset(); } catch {}
   }
 }
 
