@@ -765,6 +765,7 @@ async function handleLogin(event) {
     updateAccountButton();
     await loadForumStats();
     if (currentUser.role === 'admin') {
+      $('#maintenance-overlay')?.classList.add('is-hidden');
       showView('admin');
       loadAdminUsers();
     } else {
@@ -1097,6 +1098,16 @@ function bindEvents() {
     }
   });
   $('#btn-redeem-key')?.addEventListener('click', handleRedeemKey);
+
+  // Maintenance screen admin bypass
+  $('#btn-admin-bypass')?.addEventListener('click', () => {
+    if (currentUser && currentUser.role === 'admin') {
+      $('#maintenance-overlay')?.classList.add('is-hidden');
+      showToast('Окно техработ скрыто (режим администратора).');
+    } else {
+      openAuth('login');
+    }
+  });
 
   // Profile utilities
   $('#support-button')?.addEventListener('click', () => showToast('Тикет-система поддержки открыта в вашем профиле.'));

@@ -1029,6 +1029,62 @@
       </div>
     </div>
 
+    <!-- FULLSCREEN MAINTENANCE OVERLAY -->
+    <div id="maintenance-overlay" class="maintenance-backdrop" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
+      <div class="maintenance-dialog xf-card">
+        <div class="maintenance-top-bar">
+          <span class="maintenance-pulse-badge">
+            <span class="pulse-dot"></span>
+            ТЕХНИЧЕСКИЕ РАБОТЫ / MAINTENANCE
+          </span>
+          <span class="maintenance-code">INFRA-UPGRADE-v2</span>
+        </div>
+
+        <div class="maintenance-body">
+          <div class="maintenance-icon-wrap">
+            <div class="maintenance-icon-glow"></div>
+            <span class="maintenance-icon">⚙</span>
+          </div>
+
+          <h1 class="maintenance-title" id="maintenance-title">Масштабное обновление<span class="brand-accent">.</span></h1>
+          <p class="maintenance-subtitle">Ведутся регламентные работы по переходу на новую защищенную инфраструктуру.</p>
+
+          <div class="maintenance-warning-box">
+            <div class="warning-box-header">
+              <span class="warning-icon">⚠</span>
+              <strong>ВНИМАНИЕ: СБРОС БАЗЫ ДАННЫХ</strong>
+            </div>
+            <p>
+              В связи с переходом на новую отказоустойчивую систему постоянного хранения и внедрением лицензионных ключей,
+              <strong>база данных проекта будет полностью сброшена</strong>. Запуск начнется <strong>заново с чистого листа</strong>.
+            </p>
+            <p class="warning-sub">
+              Все ранее зарегистрированные аккаунты обнуляются. После открытия потребуется создать новый аккаунт.
+            </p>
+          </div>
+
+          <!-- TELEGRAM ANNOUNCEMENT CARD -->
+          <div class="maintenance-tg-card">
+            <div class="tg-card-left">
+              <span class="tg-icon">✈</span>
+              <div>
+                <strong>Следите за новостями и точным временем запуска!</strong>
+                <p>Все анонсы, дата открытия и бесплатные ключи будут опубликованы в нашем Telegram-канале.</p>
+              </div>
+            </div>
+            <a href="https://t.me/svitikshop" target="_blank" rel="noopener noreferrer" class="xf-button maintenance-tg-btn">
+              <span>Канал @svitikshop</span> <b>↗</b>
+            </a>
+          </div>
+
+          <div class="maintenance-footer-row">
+            <span class="maintenance-status-text">Статус: <i></i> перенос на постоянный том / активны техработы</span>
+            <button type="button" id="btn-admin-bypass" class="maintenance-admin-link">Вход для администрации ›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- System Toasts -->
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
     <script src="app.js"></script>
