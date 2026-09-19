@@ -569,6 +569,19 @@
                 <span>Действует до</span>
                 <strong id="subscription-date">—</strong>
               </div>
+
+              <!-- KEY REDEEM MODULE -->
+              <div class="profile-redeem-wrap">
+                <div class="redeem-header">
+                  <span class="redeem-title">Активация лицензионного ключа</span>
+                  <span class="tag tag-accent-dim">AC-KEY</span>
+                </div>
+                <div class="redeem-form-row">
+                  <input type="text" id="redeem-key-input" class="mono redeem-input" placeholder="AC-XXXX-XXXX-XXXX" maxlength="19" autocomplete="off" spellcheck="false" />
+                  <button type="button" id="btn-redeem-key" class="xf-button xf-button-accent">Активировать ↗</button>
+                </div>
+                <div id="redeem-key-msg" class="form-feedback is-hidden"></div>
+              </div>
             </article>
           </div>
 
@@ -647,39 +660,110 @@
           </div>
 
           <div class="admin-content">
-            <article class="admin-users info-panel xf-card">
-              <div class="panel-heading">
-                <div>
-                  <h3>Список пользователей</h3>
-                  <span class="panel-subtitle">Все аккаунты базы данных</span>
+            <div class="admin-main">
+              <article class="admin-users info-panel xf-card">
+                <div class="panel-heading">
+                  <div>
+                    <h3>Список пользователей</h3>
+                    <span class="panel-subtitle">Все аккаунты базы данных</span>
+                  </div>
+                  <div class="user-tools">
+                    <label class="search-box">
+                      <span>⌕</span>
+                      <input id="user-search" type="search" placeholder="Поиск пользователя" />
+                    </label>
+                    <button class="xf-button xf-button-small xf-button-primary" id="refresh-users" type="button">Обновить</button>
+                  </div>
                 </div>
-                <div class="user-tools">
-                  <label class="search-box">
-                    <span>⌕</span>
-                    <input id="user-search" type="search" placeholder="Поиск пользователя" />
-                  </label>
-                  <button class="xf-button xf-button-small xf-button-primary" id="refresh-users" type="button">Обновить</button>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Пользователь</th>
+                        <th>Роль</th>
+                        <th>Подписка</th>
+                        <th>HWID</th>
+                        <th>Статус</th>
+                        <th>Действие</th>
+                      </tr>
+                    </thead>
+                    <tbody id="users-table-body"></tbody>
+                  </table>
+                  <div class="empty-state is-hidden" id="users-empty">Пользователи не найдены.</div>
                 </div>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Пользователь</th>
-                      <th>Роль</th>
-                      <th>Подписка</th>
-                      <th>HWID</th>
-                      <th>Статус</th>
-                      <th>Действие</th>
-                    </tr>
-                  </thead>
-                  <tbody id="users-table-body"></tbody>
-                </table>
-                <div class="empty-state is-hidden" id="users-empty">Пользователи не найдены.</div>
-              </div>
-            </article>
+              </article>
+
+              <!-- LICENSE KEYS TABLE -->
+              <article class="admin-keys info-panel xf-card">
+                <div class="panel-heading">
+                  <div>
+                    <h3>Лицензионные ключи</h3>
+                    <span class="panel-subtitle">Сгенерированные ключи доступа</span>
+                  </div>
+                  <div class="user-tools">
+                    <label class="search-box">
+                      <span>⌕</span>
+                      <input id="keys-search" type="search" placeholder="Поиск ключа / юзера" />
+                    </label>
+                    <button class="xf-button xf-button-small xf-button-primary" id="refresh-keys" type="button">Обновить</button>
+                  </div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ключ</th>
+                        <th>Дней</th>
+                        <th>Статус</th>
+                        <th>Кем активирован</th>
+                        <th>Дата создания</th>
+                        <th>Действие</th>
+                      </tr>
+                    </thead>
+                    <tbody id="keys-table-body"></tbody>
+                  </table>
+                  <div class="empty-state is-hidden" id="keys-empty">Ключи пока не созданы.</div>
+                </div>
+              </article>
+            </div>
 
             <aside class="admin-side">
+              <!-- LICENSE KEY GENERATOR -->
+              <article class="info-panel key-generator-panel xf-card">
+                <div class="panel-heading">
+                  <div>
+                    <h3>Генератор ключей</h3>
+                    <span class="panel-subtitle">Создание ключей для передачи</span>
+                  </div>
+                  <span class="tag tag-accent">AC-KEY</span>
+                </div>
+                <div class="key-gen-body">
+                  <span class="field-caption">Быстрый выбор срока:</span>
+                  <div class="quick-days-grid">
+                    <button type="button" class="btn-quick-day" data-days="1">1 дн.</button>
+                    <button type="button" class="btn-quick-day" data-days="7">7 дн.</button>
+                    <button type="button" class="btn-quick-day active" data-days="30">30 дн.</button>
+                    <button type="button" class="btn-quick-day" data-days="90">90 дн.</button>
+                    <button type="button" class="btn-quick-day" data-days="365">365 дн.</button>
+                  </div>
+                  <label>Срок подписки (в днях)
+                    <input id="key-gen-days" type="number" min="1" max="36500" value="30" />
+                  </label>
+                  <button class="xf-button xf-button-accent full-width" id="btn-generate-key" type="button">Сгенерировать ключ ⌁</button>
+                  
+                  <div id="gen-key-result" class="gen-key-result is-hidden">
+                    <div class="gen-key-label">Сгенерированный ключ:</div>
+                    <div class="gen-key-box">
+                      <code id="gen-key-value" class="mono gen-key-code">AC-XXXX-XXXX-XXXX</code>
+                      <button type="button" id="btn-copy-gen-key" class="btn-copy-action" title="Скопировать ключ">
+                        <span>Копировать</span> <b>⧉</b>
+                      </button>
+                    </div>
+                    <div class="gen-key-tip">Ключ можно скопировать и отправить пользователю для активации.</div>
+                  </div>
+                </div>
+              </article>
+
               <!-- Issue Subscription -->
               <article class="info-panel issue-panel xf-card">
                 <div class="panel-heading">

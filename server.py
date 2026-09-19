@@ -21,7 +21,9 @@ import urllib.request
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "anoncheat.db"
+DEFAULT_DATA_DIR = Path("/data") if Path("/data").is_dir() else BASE_DIR
+DATA_DIR = Path(os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", os.environ.get("DATA_DIR", DEFAULT_DATA_DIR)))
+DB_PATH = Path(os.environ.get("DATABASE_PATH", DATA_DIR / "anoncheat.db"))
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", 5000))
 SESSION_COOKIE = "anoncheat_session"
@@ -61,6 +63,13 @@ def verify_turnstile(token, remote_ip=None):
 
 def now_iso():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def generate_license_key():
+    p1 = secrets.token_hex(2).upper()
+    p2 = secrets.token_hex(2).upper()
+    p3 = secrets.token_hex(2).upper()
+    return f"AC-{p1}-{p2}-{p3}"
 
 
 def avatar_data_url():
@@ -136,6 +145,16 @@ def init_db():
                 created_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS replies_thread_idx ON replies(thread_id);
+            CREATE TABLE IF NOT EXISTS license_keys (
+                key TEXT PRIMARY KEY,
+                days INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                created_by TEXT NOT NULL,
+                used INTEGER NOT NULL DEFAULT 0,
+                used_by TEXT DEFAULT NULL,
+                used_at TEXT DEFAULT NULL
+            );
+            CREATE INDEX IF NOT EXISTS license_keys_used_idx ON license_keys(used);
             """
         )
         # Ensure owner admin accounts (admim and admin) always exist with default credentials
@@ -317,6 +336,13 @@ class AppHandler(BaseHTTPRequestHandler):
                     rows = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
                 self.send_json({"ok": True, "users": [public_user(row) for row in rows]})
                 return
+            if parsed.path == "/api/admin/keys":
+                if self.require_admin() is None:
+                    return
+                with get_db() as db:
+                    rows = db.execute("SELECT * FROM license_keys ORDER BY created_at DESC").fetchall()
+                self.send_json({"ok": True, "keys": [dict(row) for row in rows]})
+                return
             self.serve_static(parsed.path)
         except Exception:
             traceback.print_exc()
@@ -347,6 +373,12 @@ class AppHandler(BaseHTTPRequestHandler):
             self.issue_subscription(body)
         elif parsed.path == "/api/admin/ban":
             self.toggle_ban(body)
+        elif parsed.path == "/api/admin/keys":
+            self.admin_create_key(body)
+        elif parsed.path == "/api/admin/keys/delete":
+            self.admin_delete_key(body)
+        elif parsed.path == "/api/keys/redeem":
+            self.redeem_key(body)
         else:
             self.send_error_json("Маршрут не найден.", HTTPStatus.NOT_FOUND)
 
@@ -595,6 +627,97 @@ class AppHandler(BaseHTTPRequestHandler):
             "userId": target_id,
             "username": target_username,
             "message": f"Пользователь {target_username} {status_text}."
+        })
+
+    def admin_create_key(self, body):
+        user = self.require_admin()
+        if user is None:
+            return
+        try:
+            days = int(body.get("days", 30))
+        except (TypeError, ValueError):
+            days = 30
+        if not 1 <= days <= 36500:
+            self.send_error_json("Срок действия ключа должен быть от 1 до 36500 дней.")
+            return
+        stamp = now_iso()
+        with get_db() as db:
+            for _ in range(10):
+                key = generate_license_key()
+                existing = db.execute("SELECT key FROM license_keys WHERE key = ?", (key,)).fetchone()
+                if not existing:
+                    break
+            else:
+                key = f"AC-{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}"
+            db.execute(
+                "INSERT INTO license_keys (key, days, created_at, created_by, used) VALUES (?, ?, ?, ?, 0)",
+                (key, days, stamp, user["username"]),
+            )
+            db.commit()
+        self.send_json({
+            "ok": True,
+            "key": key,
+            "days": days,
+            "created_at": stamp,
+            "created_by": user["username"],
+            "used": 0,
+            "message": f"Лицензионный ключ успешно сгенерирован на {days} дн."
+        }, HTTPStatus.CREATED)
+
+    def admin_delete_key(self, body):
+        user = self.require_admin()
+        if user is None:
+            return
+        key = str(body.get("key", "")).strip().upper()
+        if not key:
+            self.send_error_json("Не указан ключ для удаления.")
+            return
+        with get_db() as db:
+            row = db.execute("SELECT key FROM license_keys WHERE key = ?", (key,)).fetchone()
+            if row is None:
+                self.send_error_json("Ключ не найден.", HTTPStatus.NOT_FOUND)
+                return
+            db.execute("DELETE FROM license_keys WHERE key = ?", (key,))
+            db.commit()
+        self.send_json({"ok": True, "message": f"Ключ {key} удален."})
+
+    def redeem_key(self, body):
+        user = self.require_user()
+        if user is None:
+            return
+        key = str(body.get("key", "")).strip().upper()
+        if not key:
+            self.send_error_json("Пожалуйста, введите ключ активации.")
+            return
+        with get_db() as db:
+            row = db.execute("SELECT * FROM license_keys WHERE key = ?", (key,)).fetchone()
+            if row is None:
+                self.send_error_json("Неверный или несуществующий ключ активации.", HTTPStatus.NOT_FOUND)
+                return
+            if row["used"]:
+                self.send_error_json(f"Этот ключ уже был активирован ранее (пользователем {row['used_by'] or 'другим'}).", HTTPStatus.CONFLICT)
+                return
+            days = row["days"]
+            import datetime
+            current = datetime.datetime.now(datetime.timezone.utc)
+            if user["subscription_ends_at"]:
+                try:
+                    existing = datetime.datetime.fromisoformat(user["subscription_ends_at"].replace("Z", "+00:00"))
+                    if existing > current:
+                        current = existing
+                except ValueError:
+                    pass
+            ending = (current + datetime.timedelta(days=days)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+            stamp = now_iso()
+            db.execute("UPDATE users SET subscription_ends_at = ?, banned = 0 WHERE id = ?", (ending, user["id"]))
+            db.execute("UPDATE license_keys SET used = 1, used_by = ?, used_at = ? WHERE key = ?", (user["username"], stamp, key))
+            db.commit()
+            updated_user = db.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
+        self.send_json({
+            "ok": True,
+            "message": f"Ключ {key} успешно активирован! Добавлено {days} дн. подписки.",
+            "days": days,
+            "user": public_user(updated_user)
         })
 
     def serve_static(self, requested_path):

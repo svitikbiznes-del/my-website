@@ -2650,3 +2650,239 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   LICENSE KEYS SUBSYSTEM (Profile Activation & Admin Generator / Table)
+   ========================================================================== */
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.profile-redeem-wrap {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.redeem-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.redeem-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.tag-accent-dim {
+  background: rgba(158, 206, 55, 0.12);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(158, 206, 55, 0.3);
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+.redeem-form-row {
+  display: flex;
+  gap: 8px;
+}
+
+.redeem-input {
+  flex: 1;
+  background: #0b0d13;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.redeem-input:focus {
+  border-color: var(--accent);
+  background: #0e1118;
+  outline: none;
+  box-shadow: 0 0 12px rgba(158, 206, 55, 0.2);
+}
+
+.key-gen-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field-caption {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quick-days-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.btn-quick-day {
+  background: #11141c;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 7px 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.btn-quick-day:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.btn-quick-day.active {
+  background: rgba(158, 206, 55, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.gen-key-result {
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(158, 206, 55, 0.05);
+  border: 1px solid rgba(158, 206, 55, 0.35);
+  border-radius: var(--radius);
+  animation: keySlide 0.2s ease;
+}
+
+@keyframes keySlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gen-key-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.gen-key-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #090b0e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.gen-key-code {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+
+.btn-copy-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--accent);
+  color: #0c0e12;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-copy-action:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.gen-key-tip {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.btn-table-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #181d28;
+  border: 1px solid var(--border);
+  color: #cad3df;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-table-action:hover {
+  background: #22293a;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-table-del {
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.1);
+  border-color: rgba(255, 82, 82, 0.3);
+}
+
+.btn-table-del:hover {
+  background: rgba(255, 82, 82, 0.25);
+  border-color: #ff5252;
+  color: #fff;
+}
+
+.table-actions-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tag-key-active {
+  background: rgba(158, 206, 55, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(158, 206, 55, 0.3);
+}
+
+.tag-key-used {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
