@@ -1,21 +1,20 @@
 @echo off
-setlocal
+chcp 65001 >nul
 cd /d "%~dp0"
+title AnonCheat Server (http://127.0.0.1:5000)
 
-echo Starting AnonCheat server...
+echo ========================================================
+echo   AnonCheat Server - http://127.0.0.1:5000
+echo ========================================================
+echo.
+
+start "" "http://127.0.0.1:5000"
+
 where py >nul 2>&1
 if %errorlevel%==0 (
-    set "PYTHON_CMD=py"
+    py -u server.py
 ) else (
-    set "PYTHON_CMD=python"
+    python -u server.py
 )
 
-start "AnonCheat Browser" /min powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 1; Start-Process 'http://127.0.0.1:5000'"
-%PYTHON_CMD% server.py
-
-if %errorlevel% neq 0 (
-    echo.
-    echo Не удалось запустить Python. Установи Python 3.10+ и повтори запуск.
-    pause
-)
-endlocal
+pause

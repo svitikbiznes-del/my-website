@@ -26,9 +26,9 @@
             </a>
             <nav class="forum-nav-tabs" aria-label="Навигация форума">
               <a href="#" class="nav-tab active" data-view-target="public">Форумы</a>
-              <a href="#" class="nav-tab" id="nav-tab-pricing">Подписка</a>
+              <a href="#" class="nav-tab" id="nav-tab-pricing">Купить ключ</a>
               <a href="#" class="nav-tab" id="nav-tab-rules">Правила</a>
-              <a href="#" class="nav-tab" id="nav-tab-faq">Помощь</a>
+              <a href="https://t.me/svitikshop" target="_blank" rel="noopener noreferrer" class="nav-tab nav-tab-tg"><span>✈</span> Telegram</a>
             </nav>
           </div>
 
@@ -78,16 +78,6 @@
       <main id="public-view" class="view">
         <div class="forum-container forum-layout-wrap">
           
-          <!-- Forum Notice Banner (Clean XenForo style) -->
-          <div class="xf-notice" id="xf-notice">
-            <div class="notice-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-            </div>
-            <div class="notice-body">
-              <span>Для полного доступа к закрытым разделам форума, конфигам и загрузкам необходимо <a href="#" data-open-auth="login">войти</a> или <a href="#" data-open-auth="register">зарегистрироваться</a>.</span>
-            </div>
-          </div>
-
           <!-- 2-Column Grid: Forum Nodes + Sidebar -->
           <div class="forum-columns">
             
@@ -392,7 +382,7 @@
                       <span class="f-stat-title">Тем</span>
                     </div>
                     <div class="f-stat-item">
-                      <span class="f-stat-num">0</span>
+                      <span class="f-stat-num" id="stat-total-replies">0</span>
                       <span class="f-stat-title">Сообщений</span>
                     </div>
                     <div class="f-stat-item">
@@ -563,7 +553,7 @@
                 <span class="subscription-state" id="subscription-state"><i></i> inactive</span>
               </div>
               <h2 id="subscription-title">Доступ не активирован</h2>
-              <p id="subscription-copy">Обратись к администратору, чтобы активировать доступ к приватному пулу.</p>
+              <p id="subscription-copy">Для активации доступа введите лицензионный ключ ниже (приобрести ключ можно в Telegram @svitikshop).</p>
               <div class="subscription-progress" id="subscription-progress"><span></span></div>
               <div class="subscription-bottom">
                 <span>Действует до</span>
@@ -581,6 +571,27 @@
                   <button type="button" id="btn-redeem-key" class="xf-button xf-button-accent">Активировать ↗</button>
                 </div>
                 <div id="redeem-key-msg" class="form-feedback is-hidden"></div>
+              </div>
+
+              <!-- LOADER DOWNLOAD MODULE -->
+              <div class="profile-loader-download-wrap">
+                <div class="loader-dl-header">
+                  <span class="redeem-title">Клиент / Лоадер AnonCheat</span>
+                  <span class="tag tag-accent-dim" id="profile-loader-tag">BUILD v2.4.8</span>
+                </div>
+                <div class="loader-dl-box" id="profile-loader-box">
+                  <div class="loader-dl-info">
+                    <strong id="loader-dl-title">Официальный лоадер AnonCheat</strong>
+                    <span id="loader-dl-hint">Доступно только при активной подписке.</span>
+                  </div>
+                  <a id="btn-download-loader" target="_blank" rel="noopener noreferrer" class="xf-button xf-button-accent loader-dl-btn disabled" aria-disabled="true">
+                    <span class="dl-icon">⤓</span>
+                    <span id="btn-download-loader-text">Доступ закрыт 🔒</span>
+                  </a>
+                </div>
+                <div id="loader-dl-warning" class="loader-dl-locked-note">
+                  <span>🔒</span> Кнопка скачивания заблокирована: для загрузки лоадера требуется активная подписка.
+                </div>
               </div>
             </article>
           </div>
@@ -728,6 +739,29 @@
             </div>
 
             <aside class="admin-side">
+              <!-- LOADER AUTO-UPLOAD / LINK MANAGEMENT -->
+              <article class="info-panel loader-manage-panel xf-card">
+                <div class="panel-heading">
+                  <div>
+                    <h3>Ссылка на лоадер</h3>
+                    <span class="panel-subtitle">Авто-обновление ссылки у всех пользователей</span>
+                  </div>
+                  <span class="tag tag-accent">LOADER URL</span>
+                </div>
+                <div class="loader-manage-body">
+                  <label>Прямая ссылка для скачивания (Google Drive, Mega, Yandex, .exe):
+                    <input id="admin-loader-url-input" type="url" placeholder="https://example.com/AnonCheat_Loader.exe" autocomplete="off" spellcheck="false" />
+                  </label>
+                  <div class="loader-url-current-row">
+                    <span>Текущая ссылка:</span>
+                    <a id="admin-loader-current-link" href="#" target="_blank" rel="noopener noreferrer" class="current-link-text">Не установлена</a>
+                  </div>
+                  <button class="xf-button xf-button-accent full-width" id="btn-save-loader-url" type="button">
+                    <span>Сохранить и обновить для всех ⤓</span>
+                  </button>
+                </div>
+              </article>
+
               <!-- LICENSE KEY GENERATOR -->
               <article class="info-panel key-generator-panel xf-card">
                 <div class="panel-heading">
@@ -943,35 +977,34 @@
       <div class="pricing-dialog xf-card">
         <button class="modal-close" id="close-pricing" type="button" aria-label="Закрыть">×</button>
         <div class="pricing-header">
-          <div class="eyebrow"><span class="eyebrow-line"></span> ПОДПИСКА И ТАРИФЫ</div>
-          <h2 id="pricing-title">Доступ к закрытому клубу<span class="brand-accent">.</span></h2>
-          <p>Выберите подходящий срок для активации аккаунта. Дни суммируются.</p>
+          <div class="eyebrow"><span class="eyebrow-line"></span> ЛИЦЕНЗИОННЫЕ КЛЮЧИ</div>
+          <h2 id="pricing-title">Тарифы и покупка доступа<span class="brand-accent">.</span></h2>
+          <p>Ключи выдаются автоматически через Telegram. После покупки активируйте ключ в личном кабинете.</p>
         </div>
         <div class="xf-pricing-grid">
           <div class="xf-price-card">
             <div class="price-period">7 ДНЕЙ</div>
             <div class="price-val">100 <small>₽</small></div>
             <p>Тестовый доступ к CS2 билду и базовым конфигам сообщества.</p>
-            <button class="xf-button xf-button-ghost full-width" type="button" data-open-auth="register">Выбрать 7 дней</button>
+            <a href="https://t.me/svitikshop" target="_blank" rel="noopener noreferrer" class="xf-button xf-button-ghost full-width">Купить ключ (Telegram) ↗</a>
           </div>
           <div class="xf-price-card featured">
-            <div class="price-badge">ПОПУЛЯРНО</div>
+            <div class="price-badge">ХИТ ПРОДАЖ</div>
             <div class="price-period">30 ДНЕЙ</div>
             <div class="price-val">189 <small>₽</small></div>
             <p>Полный доступ к приватному форуму, Lua-скриптам и Premier конфигам.</p>
-            <button class="xf-button xf-button-primary full-width" type="button" data-open-auth="register">Выбрать 30 дней</button>
+            <a href="https://t.me/svitikshop" target="_blank" rel="noopener noreferrer" class="xf-button xf-button-accent full-width">Купить ключ (Telegram) ↗</a>
           </div>
           <div class="xf-price-card">
             <div class="price-period">LIFETIME</div>
             <div class="price-val">399 <small>₽</small></div>
             <p>Пожизненный VIP-статус на форуме со всеми последующими обновлениями.</p>
-            <button class="xf-button xf-button-ghost full-width" type="button" data-open-auth="register">Выбрать Lifetime</button>
+            <a href="https://t.me/svitikshop" target="_blank" rel="noopener noreferrer" class="xf-button xf-button-ghost full-width">Купить ключ (Telegram) ↗</a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- AUTH MODAL (Login & Register) -->
     <!-- AUTH MODAL (Login & Register) -->
     <div class="modal-backdrop is-hidden" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
       <div class="auth-modal xf-card">
@@ -1030,7 +1063,7 @@
     </div>
 
     <!-- FULLSCREEN MAINTENANCE OVERLAY -->
-    <div id="maintenance-overlay" class="maintenance-backdrop" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
+    <div id="maintenance-overlay" class="maintenance-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
       <div class="maintenance-dialog xf-card">
         <div class="maintenance-top-bar">
           <span class="maintenance-pulse-badge">
