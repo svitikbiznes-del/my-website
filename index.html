@@ -83,6 +83,32 @@
             
             <!-- LEFT COLUMN: Categories & Forum Nodes -->
             <div class="forum-content-col" id="forum-nodes-container">
+
+          <!-- ONLINE USER CHAT WIDGET -->
+          <div class="xf-widget chat-widget-container" id="chat-widget">
+            <div class="widget-header chat-header-row">
+              <div class="widget-title"><i class="fa-solid fa-comments text-accent"></i> ЧАТ ПОЛЬЗОВАТЕЛЕЙ</div>
+              <span class="chat-status-tag" id="chat-online-badge"><i class="fa-solid fa-circle text-success small-icon"></i> <span id="chat-msg-count">0</span> сообщений</span>
+            </div>
+            <div class="chat-messages-scroll" id="chat-messages-list">
+              <div class="chat-empty-loading"><i class="fa-solid fa-spinner fa-spin"></i> Загрузка сообщений...</div>
+            </div>
+            <div class="chat-input-wrapper">
+              <form id="chat-form" class="chat-form-row" onsubmit="sendChatMessage(event); return false;">
+                <input type="text" id="chat-input" class="chat-text-input" placeholder="Напишите сообщение в общий чат..." maxlength="300" autocomplete="off" />
+                <button type="button" class="xf-button xf-button-accent chat-send-btn" id="chat-send-btn" onclick="sendChatMessage(event)">
+                  <i class="fa-solid fa-paper-plane"></i> Отправить
+                </button>
+              </form>
+              <div class="chat-guest-notice is-hidden" id="chat-guest-notice">
+                <i class="fa-solid fa-lock"></i> Только зарегистрированные пользователи могут писать в чат. <a href="#" id="chat-login-link">Войти на сайт</a>
+              </div>
+              <div class="chat-muted-notice is-hidden" id="chat-muted-notice">
+                <i class="fa-solid fa-volume-xmark"></i> Вы замучены администрацией и не можете отправлять сообщения.
+              </div>
+            </div>
+          </div>
+
               
               <!-- CATEGORY 1: Официальный раздел -->
               <div class="xf-category" data-cat-id="official">
@@ -412,6 +438,20 @@
                   </ul>
                 </div>
               </div>
+
+
+          <!-- WIDGET 4: Moderation Staff -->
+          <div class="xf-widget" id="sidebar-moderation-widget">
+            <div class="widget-header">
+              <div class="widget-title"><i class="fa-solid fa-user-shield"></i> МОДЕРАЦИЯ</div>
+            </div>
+            <div class="widget-content">
+              <ul class="staff-list" id="moderator-staff-list">
+                <li class="widget-muted">Нет модераторов в сети</li>
+              </ul>
+            </div>
+          </div>
+
 
             </aside>
           </div>

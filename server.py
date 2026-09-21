@@ -144,6 +144,20 @@ def init_db():
                 used_at TEXT DEFAULT NULL
             );
             CREATE INDEX IF NOT EXISTS license_keys_used_idx ON license_keys(used);
+            
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                username TEXT NOT NULL,
+                user_role TEXT NOT NULL DEFAULT 'member',
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS chat_mutes (
+                username TEXT PRIMARY KEY,
+                muted_by TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT
@@ -262,6 +276,16 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_error_json("Аккаунт заблокирован.", HTTPStatus.FORBIDDEN)
         return user
 
+    
+    def require_staff(self):
+        user = self.require_user()
+        if user is None:
+            return None
+        if user["role"] not in ("admin", "moderator"):
+            self.send_error_json("Недостаточно прав.", HTTPStatus.FORBIDDEN)
+            return None
+        return user
+
     def require_admin(self):
         user = self.require_user()
         if user is not None and user["role"] != "admin":
@@ -281,9 +305,100 @@ class AppHandler(BaseHTTPRequestHandler):
                 db.commit()
         return {"Set-Cookie": f"{SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"}
 
+    
+    def get_chat_messages(self):
+        user = self.current_user_row()
+        with get_db() as db:
+            rows = db.execute("SELECT id, user_id, username, user_role, content, created_at FROM chat_messages ORDER BY created_at DESC LIMIT 50").fetchall()
+            messages = [dict(r) for r in reversed(rows)]
+            is_muted = False
+            if user:
+                m_row = db.execute("SELECT username FROM chat_mutes WHERE username = ? COLLATE NOCASE", (user["username"],)).fetchone()
+                if m_row:
+                    is_muted = True
+        self.send_json({
+            "ok": True,
+            "messages": messages,
+            "is_muted": is_muted,
+            "user": public_user(user) if user else None
+        })
+
+    def send_chat_message(self, body):
+        user = self.require_user()
+        if user is None:
+            return
+        with get_db() as db:
+            m_row = db.execute("SELECT username FROM chat_mutes WHERE username = ? COLLATE NOCASE", (user["username"],)).fetchone()
+            if m_row:
+                self.send_error_json("Вы замучены в чате.", HTTPStatus.FORBIDDEN)
+                return
+        content = str(body.get("content", "")).strip()
+        if not content:
+            self.send_error_json("Сообщение не может быть пустым.")
+            return
+        if len(content) > 300:
+            content = content[:300]
+        
+        msg_id = uuid.uuid4().hex
+        stamp = now_iso()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO chat_messages (id, user_id, username, user_role, content, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (msg_id, user["id"], user["username"], user["role"], content, stamp)
+            )
+            db.commit()
+        self.send_json({"ok": True, "success": True})
+
+    def delete_chat_message(self, body):
+        user = self.require_staff()
+        if user is None:
+            return
+        msg_id = str(body.get("message_id", "")).strip()
+        with get_db() as db:
+            db.execute("DELETE FROM chat_messages WHERE id = ?", (msg_id,))
+            db.commit()
+        self.send_json({"ok": True, "success": True})
+
+    def mute_chat_user(self, body):
+        user = self.require_staff()
+        if user is None:
+            return
+        target = str(body.get("target_username", "")).strip()
+        action = str(body.get("action", "mute")).lower()
+        if not target:
+            self.send_error_json("Укажите пользователя.")
+            return
+        stamp = now_iso()
+        with get_db() as db:
+            if action == "mute":
+                db.execute("INSERT OR REPLACE INTO chat_mutes (username, muted_by, created_at) VALUES (?, ?, ?)",
+                           (target, user["username"], stamp))
+            else:
+                db.execute("DELETE FROM chat_mutes WHERE username = ? COLLATE NOCASE", (target,))
+            db.commit()
+        self.send_json({"ok": True, "success": True})
+
+    def change_user_role(self, body):
+        user = self.require_admin()
+        if user is None:
+            return
+        target = str(body.get("username", "")).strip()
+        new_role = str(body.get("role", "member")).lower()
+        if new_role not in ("member", "moderator", "admin"):
+            self.send_error_json("Неверная роль.")
+            return
+        with get_db() as db:
+            db.execute("UPDATE users SET role = ? WHERE username = ? COLLATE NOCASE", (new_role, target))
+            db.commit()
+        self.send_json({"ok": True, "success": True})
+
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
+            
+            if parsed.path == "/api/chat":
+                self.get_chat_messages()
+                return
             if parsed.path == "/api/me":
                 self.send_json({"ok": True, "user": public_user(self.current_user_row())})
                 return
@@ -326,7 +441,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     users_count = db.execute("SELECT count(*) FROM users").fetchone()[0]
                     newest_row = db.execute("SELECT username FROM users ORDER BY created_at DESC LIMIT 1").fetchone()
                     newest_user = newest_row["username"] if newest_row else None
-                    staff_rows = db.execute("SELECT username, role FROM users WHERE role = 'admin' ORDER BY username ASC").fetchall()
+                    staff_rows = db.execute("SELECT username, role FROM users WHERE role IN ('admin', 'moderator') ORDER BY username ASC").fetchall()
                     staff = [{"username": r["username"], "role": r["role"]} for r in staff_rows]
                 self.send_json({
                     "ok": True,
@@ -398,6 +513,15 @@ class AppHandler(BaseHTTPRequestHandler):
             self.login(body)
         elif parsed.path == "/api/logout":
             self.send_json({"ok": True}, extra_headers=self.clear_session_cookie())
+        
+        elif parsed.path == "/api/chat":
+            self.send_chat_message(body)
+        elif parsed.path == "/api/chat/delete":
+            self.delete_chat_message(body)
+        elif parsed.path == "/api/chat/mute":
+            self.mute_chat_user(body)
+        elif parsed.path == "/api/admin/role":
+            self.change_user_role(body)
         elif parsed.path == "/api/threads":
             self.create_thread(body)
         elif parsed.path == "/api/threads/delete":
@@ -839,11 +963,11 @@ class AppHandler(BaseHTTPRequestHandler):
         relative = "index.html" if requested_path in ("", "/") else requested_path.lstrip("/")
         allowed = {"index.html", "styles.css", "app.js", "cat-avatar.jpg"}
         if relative not in allowed:
-            self.send_error("Not found", HTTPStatus.NOT_FOUND)
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
             return
         file_path = BASE_DIR / relative
         if not file_path.is_file():
-            self.send_error("Not found", HTTPStatus.NOT_FOUND)
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
             return
         content_length = file_path.stat().st_size
         content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"

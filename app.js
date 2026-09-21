@@ -556,7 +556,13 @@ function renderAdmin() {
           <span>${escapeHtml(user.username)}<span class="user-email">${escapeHtml(user.email)}</span></span>
         </span>
       </td>
-      <td><span class="table-tag ${user.role === 'admin' ? 'role-admin' : ''}">${escapeHtml(user.role)}</span></td>
+      <td>
+  <select class="inline-role-select" onchange="changeUserRole('${escapeHtml(user.username)}', this.value)">
+    <option value="member" ${user.role === 'member' ? 'selected' : ''}>Member</option>
+    <option value="moderator" ${user.role === 'moderator' ? 'selected' : ''}>Moderator</option>
+    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Administrator</option>
+  </select>
+</td>
       <td>${sub.active ? `<span class="table-tag">${sub.days} дн.</span>` : '<span class="muted-text">нет</span>'}</td>
       <td><span class="font-mono">null</span></td>
       <td>
@@ -1277,18 +1283,31 @@ async function loadForumStats() {
     if ($('#forum-stat-newest')) $('#forum-stat-newest').textContent = data.newestUser || '—';
 
     const staffList = $('#staff-online-list');
-    if (staffList) {
-      if (data.staff && data.staff.length > 0) {
-        staffList.innerHTML = data.staff.map(s => `
+    const modStaffList = $('#moderator-staff-list');
+    if (data.staff && data.staff.length > 0) {
+      const admins = data.staff.filter(s => s.role === 'admin');
+      const mods = data.staff.filter(s => s.role === 'moderator');
+      if (staffList) {
+        staffList.innerHTML = admins.length > 0 ? admins.map(s => `
           <li>
             <span class="staff-dot online"></span>
             <span class="role-admin font-bold">${escapeHtml(s.username)}</span>
             <span class="staff-role-sub">Administrator</span>
           </li>
-        `).join('');
-      } else {
-        staffList.innerHTML = '<li class="widget-muted" id="staff-none">Нет администраторов в сети</li>';
+        `).join('') : '<li class="widget-muted">Нет администрации в сети</li>';
       }
+      if (modStaffList) {
+        modStaffList.innerHTML = mods.length > 0 ? mods.map(s => `
+          <li>
+            <span class="staff-dot online"></span>
+            <span class="role-moderator font-bold">${escapeHtml(s.username)}</span>
+            <span class="staff-role-sub">Moderator</span>
+          </li>
+        `).join('') : '<li class="widget-muted">Нет модераторов в сети</li>';
+      }
+    } else {
+      if (staffList) staffList.innerHTML = '<li class="widget-muted">Нет администрации в сети</li>';
+      if (modStaffList) modStaffList.innerHTML = '<li class="widget-muted">Нет модераторов в сети</li>';
     }
   } catch {
     if ($('#stat-total-threads')) $('#stat-total-threads').textContent = '0';
@@ -1296,7 +1315,7 @@ async function loadForumStats() {
     if ($('#forum-stat-active')) $('#forum-stat-active').textContent = '0';
     if ($('#forum-stat-newest')) $('#forum-stat-newest').textContent = '—';
     const staffList = $('#staff-online-list');
-    if (staffList) staffList.innerHTML = '<li class="widget-muted" id="staff-none">Нет администраторов в сети</li>';
+    if (staffList) staffList.innerHTML = '<li class="widget-muted">Нет администрации в сети</li>';
   }
 }
 
@@ -1323,3 +1342,175 @@ async function init() {
 }
 
 init();
+
+
+// === CHAT & MODERATOR SYSTEM LOGIC (FIXED) ===
+
+async function fetchChatMessages() {
+  const chatList = document.getElementById('chat-messages-list');
+  const chatFormRow = document.getElementById('chat-form-row');
+  const guestNotice = document.getElementById('chat-guest-notice');
+  const mutedNotice = document.getElementById('chat-muted-notice');
+  const msgCountBadge = document.getElementById('chat-msg-count');
+
+  if (!chatList) return;
+
+  try {
+    const data = await api('/api/chat');
+    const messages = data.messages || [];
+    const isMuted = data.is_muted;
+    const user = currentUser; // Global currentUser state
+
+    if (msgCountBadge) msgCountBadge.textContent = messages.length;
+
+    // Visibility of controls based on login & mute status
+    if (!user) {
+      if (chatFormRow) chatFormRow.classList.add('is-hidden');
+      if (guestNotice) guestNotice.classList.remove('is-hidden');
+      if (mutedNotice) mutedNotice.classList.add('is-hidden');
+    } else if (isMuted) {
+      if (chatFormRow) chatFormRow.classList.add('is-hidden');
+      if (guestNotice) guestNotice.classList.add('is-hidden');
+      if (mutedNotice) mutedNotice.classList.remove('is-hidden');
+    } else {
+      if (chatFormRow) chatFormRow.classList.remove('is-hidden');
+      if (guestNotice) guestNotice.classList.add('is-hidden');
+      if (mutedNotice) mutedNotice.classList.add('is-hidden');
+    }
+
+    if (messages.length === 0) {
+      chatList.innerHTML = '<div class="chat-empty-loading">Сообщений пока нет. Напишите первым!</div>';
+      return;
+    }
+
+    const canModerate = user && (user.role === 'admin' || user.role === 'moderator');
+
+    let html = '';
+    messages.forEach(msg => {
+      const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let roleClass = 'role-member';
+      let roleText = 'MEMBER';
+      if (msg.user_role === 'admin') {
+        roleClass = 'role-admin';
+        roleText = 'ADMIN';
+      } else if (msg.user_role === 'moderator') {
+        roleClass = 'role-moderator';
+        roleText = 'MODERATOR';
+      }
+
+      const initial = (msg.username || 'A')[0].toUpperCase();
+
+      let actionsHtml = '';
+      if (canModerate) {
+        actionsHtml = `
+          <div class="chat-actions">
+            <button type="button" class="chat-action-btn btn-mute" title="Замутить/Размутить" onclick="toggleMuteChatUser('${escapeHtml(msg.username)}')">
+              <i class="fa-solid fa-volume-xmark"></i>
+            </button>
+            <button type="button" class="chat-action-btn btn-del" title="Удалить сообщение" onclick="deleteChatMessage('${msg.id}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="chat-message-item" data-id="${msg.id}">
+          <div class="chat-avatar">${initial}</div>
+          <div class="chat-msg-body">
+            <div class="chat-msg-meta">
+              <strong class="chat-username">${escapeHtml(msg.username)}</strong>
+              <span class="role-badge ${roleClass}">${roleText}</span>
+              <span class="chat-time">${timeStr}</span>
+              ${actionsHtml}
+            </div>
+            <div class="chat-text">${escapeHtml(msg.content)}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    const isScrolledToBottom = chatList.scrollHeight - chatList.clientHeight <= chatList.scrollTop + 60;
+    chatList.innerHTML = html;
+    if (isScrolledToBottom) {
+      chatList.scrollTop = chatList.scrollHeight;
+    }
+  } catch (err) {
+    console.error('Chat fetch error:', err);
+  }
+}
+
+async function sendChatMessage(e) {
+  if (e) e.preventDefault();
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  try {
+    const data = await api('/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ content: text })
+    });
+    if (data.success) {
+      input.value = '';
+      await fetchChatMessages();
+      const chatList = document.getElementById('chat-messages-list');
+      if (chatList) chatList.scrollTop = chatList.scrollHeight;
+    } else if (data.error) {
+      alert(data.error);
+    }
+  } catch (err) {
+    alert(err.message || 'Ошибка отправки сообщения');
+  }
+}
+
+async function deleteChatMessage(msgId) {
+  if (!confirm('Удалить это сообщение?')) return;
+  try {
+    await api('/api/chat/delete', {
+      method: 'POST',
+      body: JSON.stringify({ message_id: msgId })
+    });
+    fetchChatMessages();
+  } catch (err) {
+    alert(err.message || 'Ошибка удаления сообщения');
+  }
+}
+
+async function toggleMuteChatUser(username) {
+  const action = confirm(`Замутить / размутить пользователя ${username} в чате?`) ? 'mute' : 'unmute';
+  try {
+    const data = await api('/api/chat/mute', {
+      method: 'POST',
+      body: JSON.stringify({ target_username: username, action: action })
+    });
+    if (data.success) {
+      alert(`Пользователь ${username} ${action === 'mute' ? 'замучен' : 'размучен'}`);
+      fetchChatMessages();
+    }
+  } catch (err) {
+    alert(err.message || 'Ошибка изменения статуса мута');
+  }
+}
+
+async function changeUserRole(username, newRole) {
+  try {
+    const data = await api('/api/admin/role', {
+      method: 'POST',
+      body: JSON.stringify({ username: username, role: newRole })
+    });
+    if (data.success) {
+      alert(`Роль пользователя ${username} изменена на ${newRole}`);
+      if (typeof loadAdminUsers === 'function') loadAdminUsers();
+      if (typeof loadForumStats === 'function') loadForumStats();
+    }
+  } catch (err) {
+    alert(err.message || 'Ошибка изменения роли');
+  }
+}
+
+window.sendChatMessage = sendChatMessage;
+window.deleteChatMessage = deleteChatMessage;
+window.toggleMuteChatUser = toggleMuteChatUser;
+window.changeUserRole = changeUserRole;
