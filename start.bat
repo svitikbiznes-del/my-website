@@ -1,20 +1,27 @@
 @echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-title AnonCheat Server (http://127.0.0.1:5000)
+title AnonGrief Server Launcher [Python]
+color 0b
 
-echo ========================================================
-echo   AnonCheat Server - http://127.0.0.1:5000
-echo ========================================================
+echo =======================================================
+echo          ANONGRIEF REVOLUTION // LAUNCHER
+echo =======================================================
+echo.
+echo [*] Checking Python environment...
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    color 0c
+    echo [ERROR] Python not found in PATH!
+    pause
+    exit /b 1
+)
+
+echo [*] Starting AnonGrief server on http://localhost:7777...
+echo [*] Opening browser...
+start http://localhost:7777
+echo [*] Press Ctrl+C in this window to stop the server.
+echo =======================================================
 echo.
 
-start "" "http://127.0.0.1:5000"
-
-where py >nul 2>&1
-if %errorlevel%==0 (
-    py -u server.py
-) else (
-    python -u server.py
-)
+python -m uvicorn main:app --host 0.0.0.0 --port 7777
 
 pause
